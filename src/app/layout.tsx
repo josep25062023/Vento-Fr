@@ -1,7 +1,8 @@
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
-import Sidebar from "@/components/layout/Sidebar"
+import { AuthProvider } from "@/contexts/AuthContext"
+import AuthenticatedLayout from "@/components/layout/AuthenticatedLayout"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -18,12 +19,11 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body className={inter.className} suppressHydrationWarning={true}>
-        <div className="flex h-screen bg-black">
-          <Sidebar />
-          <main className="flex-1 overflow-auto bg-black">
+        <AuthProvider>
+          <AuthenticatedLayout>
             {children}
-          </main>
-        </div>
+          </AuthenticatedLayout>
+        </AuthProvider>
       </body>
     </html>
   )

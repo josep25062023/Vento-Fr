@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface SidebarItem {
   id: string
@@ -68,6 +69,7 @@ const sidebarItems: SidebarItem[] = [
 export default function Sidebar() {
   const pathname = usePathname()
   const [isCollapsed, setIsCollapsed] = useState(false)
+  const { user, logout } = useAuth()
 
   return (
     <div className={`bg-black text-white h-screen transition-all duration-300 ${
@@ -124,17 +126,32 @@ export default function Sidebar() {
 
       {/* User Profile */}
       <div className="p-4 border-t border-gray-800">
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-3 mb-3">
           <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
-            <span className="text-white font-bold text-xs">U</span>
+            <span className="text-white font-bold text-xs">{user?.name?.charAt(0) || 'U'}</span>
           </div>
           {!isCollapsed && (
             <div className="flex-1">
-              <p className="text-sm font-medium text-white">Usuario</p>
-              <p className="text-xs text-gray-400">Administrador</p>
+              <p className="text-sm font-medium text-white">{user?.name}</p>
+              <p className="text-xs text-gray-400">{user?.role}</p>
             </div>
           )}
         </div>
+        
+        {/* Logout button */}
+        <button
+          onClick={logout}
+          className={`w-full flex items-center space-x-3 p-2 rounded-lg text-gray-300 hover:bg-gray-800 hover:text-white transition-colors ${
+            isCollapsed ? 'justify-center' : ''
+          }`}
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+          {!isCollapsed && (
+            <span className="text-sm font-medium">Cerrar Sesión</span>
+          )}
+        </button>
       </div>
     </div>
   )
