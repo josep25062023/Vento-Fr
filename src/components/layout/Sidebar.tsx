@@ -1,8 +1,9 @@
+// src/components/layout/Sidebar.tsx - CON LOGOUT FUNCIONAL
 'use client'
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 
 interface SidebarItem {
@@ -70,6 +71,12 @@ export default function Sidebar() {
   const pathname = usePathname()
   const [isCollapsed, setIsCollapsed] = useState(false)
   const { user, logout } = useAuth()
+  const router = useRouter()
+
+  const handleLogout = async () => {
+    await logout()
+    router.push('/login')
+  }
 
   return (
     <div className={`bg-black text-white h-screen transition-all duration-300 ${
@@ -128,19 +135,25 @@ export default function Sidebar() {
       <div className="p-4 border-t border-gray-800">
         <div className="flex items-center space-x-3 mb-3">
           <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
-            <span className="text-white font-bold text-xs">{user?.name?.charAt(0) || 'U'}</span>
+            <span className="text-white font-bold text-xs">
+              {user?.nombreCompleto?.charAt(0) || 'U'}
+            </span>
           </div>
           {!isCollapsed && (
             <div className="flex-1">
-              <p className="text-sm font-medium text-white">{user?.name}</p>
-              <p className="text-xs text-gray-400">{user?.role}</p>
+              <p className="text-sm font-medium text-white">
+                {user?.nombreCompleto || 'Usuario'}
+              </p>
+              <p className="text-xs text-gray-400">
+                {user?.correo || user?.email || 'usuario@vento.com'}
+              </p>
             </div>
           )}
         </div>
         
         {/* Logout button */}
         <button
-          onClick={logout}
+          onClick={handleLogout}
           className={`w-full flex items-center space-x-3 p-2 rounded-lg text-gray-300 hover:bg-gray-800 hover:text-white transition-colors ${
             isCollapsed ? 'justify-center' : ''
           }`}

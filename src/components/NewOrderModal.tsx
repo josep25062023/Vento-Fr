@@ -1,3 +1,4 @@
+// src/components/NewOrderModal.tsx - VERSIÓN ROBUSTA
 'use client'
 
 import { useState } from 'react'
@@ -25,6 +26,12 @@ interface NewOrderModalProps {
   onConfirm: (customerName: string, items: OrderItem[]) => void
 }
 
+// Función utilitaria para validar números
+const safeNumber = (value: any): number => {
+  const num = Number(value)
+  return isNaN(num) ? 0 : num
+}
+
 export default function NewOrderModal({ isOpen, onClose, products, onConfirm }: NewOrderModalProps) {
   const [customerName, setCustomerName] = useState('')
   const [selectedProducts, setSelectedProducts] = useState<{[key: string]: number}>({})
@@ -33,9 +40,17 @@ export default function NewOrderModal({ isOpen, onClose, products, onConfirm }: 
 
   if (!isOpen) return null
 
-  const categories = ['all', ...Array.from(new Set(products.map(p => p.category)))]
+  // Validar que products sea un array y limpiar datos
+  const validProducts = Array.isArray(products) ? products.map(p => ({
+    ...p,
+    price: safeNumber(p.price),
+    name: p.name || 'Producto sin nombre',
+    category: p.category || 'Sin categoría'
+  })) : []
 
-  const filteredProducts = products.filter(product => {
+  const categories = ['all', ...Array.from(new Set(validProducts.map(p => p.category)))]
+
+  const filteredProducts = validProducts.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(productSearch.toLowerCase())
     const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory
     return matchesSearch && matchesCategory
@@ -61,25 +76,37 @@ export default function NewOrderModal({ isOpen, onClose, products, onConfirm }: 
 
   const getOrderTotal = () => {
     return Object.entries(selectedProducts).reduce((total, [productId, quantity]) => {
-      const product = products.find(p => p.id === productId)
-      return total + (product ? product.price * quantity : 0)
+      const product = validProducts.find(p => p.id === productId)
+      const price = safeNumber(product?.price)
+      return total + (price * quantity)
     }, 0)
   }
 
   const handleConfirm = () => {
-    if (!customerName.trim() || Object.keys(selectedProducts).length === 0) {
-      alert('Por favor ingresa el nombre del cliente y selecciona al menos un producto')
+    if (!customerName.trim()) {
+      alert('Por favor ingresa el nombre del cliente')
+      return
+    }
+
+    if (Object.keys(selectedProducts).length === 0) {
+      alert('Por favor selecciona al menos un producto')
       return
     }
 
     const orderItems: OrderItem[] = Object.entries(selectedProducts).map(([productId, quantity]) => {
-      const product = products.find(p => p.id === productId)!
+      const product = validProducts.find(p => p.id === productId)
       return {
         id: productId,
-        name: product.name,
+        name: product?.name || 'Producto desconocido',
         quantity,
-        price: product.price
+        price: safeNumber(product?.price)
       }
+    })
+
+    console.log('🚀 Creating order with data:', {
+      customerName,
+      items: orderItems,
+      totalAmount: getOrderTotal()
     })
 
     onConfirm(customerName, orderItems)
@@ -168,12 +195,12 @@ export default function NewOrderModal({ isOpen, onClose, products, onConfirm }: 
 
               {/* Products List */}
               <div className="space-y-2 max-h-96 overflow-y-auto">
-                {filteredProducts.map((product) => (
+                {filteredProducts.length > 0 ? filteredProducts.map((product) => (
                   <div key={product.id} className="bg-gray-800 border border-gray-700 rounded-xl p-3">
                     <div className="flex justify-between items-center">
                       <div className="flex-1">
                         <h4 className="font-medium text-white">{product.name}</h4>
-                        <p className="text-gray-400 text-sm">${product.price.toFixed(2)}</p>
+                        <p className="text-gray-400 text-sm">${safeNumber(product.price).toFixed(2)}</p>
                       </div>
                       <div className="flex items-center gap-2">
                         <button
@@ -195,7 +222,13 @@ export default function NewOrderModal({ isOpen, onClose, products, onConfirm }: 
                       </div>
                     </div>
                   </div>
-                ))}
+                )) : (
+                  <div className="text-center py-8">
+                    <p className="text-gray-400">
+                      {validProducts.length === 0 ? 'No hay productos disponibles' : 'No se encontraron productos'}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -210,17 +243,18 @@ export default function NewOrderModal({ isOpen, onClose, products, onConfirm }: 
               ) : (
                 <div className="space-y-3">
                   {Object.entries(selectedProducts).map(([productId, quantity]) => {
-                    const product = products.find(p => p.id === productId)!
+                    const product = validProducts.find(p => p.id === productId)
+                    const price = safeNumber(product?.price)
                     return (
                       <div key={productId} className="bg-gray-800 border border-gray-700 rounded-xl p-3">
                         <div className="flex justify-between items-center">
                           <div className="flex-1">
-                            <h4 className="font-medium text-white">{product.name}</h4>
+                            <h4 className="font-medium text-white">{product?.name || 'Producto desconocido'}</h4>
                             <p className="text-gray-400 text-sm">Cantidad: {quantity}</p>
                           </div>
                           <div className="text-right">
                             <p className="font-semibold text-white">
-                              ${(product.price * quantity).toFixed(2)}
+                              ${(price * quantity).toFixed(2)}
                             </p>
                           </div>
                         </div>
@@ -247,6 +281,7 @@ export default function NewOrderModal({ isOpen, onClose, products, onConfirm }: 
             <button
               onClick={handleConfirm}
               className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-xl transition-colors font-medium"
+              disabled={!customerName.trim() || Object.keys(selectedProducts).length === 0}
             >
               Confirmar Pedido
             </button>

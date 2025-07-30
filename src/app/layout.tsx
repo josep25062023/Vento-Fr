@@ -1,10 +1,8 @@
+// src/app/layout.tsx - RESTAURADO Y FUNCIONANDO
 import type { Metadata } from "next"
-import { Inter } from "next/font/google"
 import "./globals.css"
 import { AuthProvider } from "@/contexts/AuthContext"
 import AuthenticatedLayout from "@/components/layout/AuthenticatedLayout"
-
-const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "Vento - Sistema de Punto de Venta",
@@ -18,7 +16,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es">
-      <body className={inter.className} suppressHydrationWarning={true}>
+      <body suppressHydrationWarning={true}>
         <AuthProvider>
           <AuthenticatedLayout>
             {children}

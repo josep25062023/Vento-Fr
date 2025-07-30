@@ -1,13 +1,14 @@
+// src/contexts/AuthContext.tsx - VERSIÓN FINAL SEGURA
 'use client'
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
+import { authService } from '@/services/authService'
 
 interface User {
   id: string
-  email: string
-  name: string
-  role: string
+  email?: string
+  correo?: string
+  nombreCompleto: string
 }
 
 interface AuthContextType {
@@ -15,87 +16,89 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<boolean>
   logout: () => void
   isLoading: boolean
+  error: string | null
+  isInitialized: boolean
 }
-
-// Usuarios predefinidos de la empresa
-const COMPANY_USERS = [
-  {
-    id: '1',
-    email: 'admin@vento.com',
-    password: 'admin123',
-    name: 'Administrador',
-    role: 'Administrador'
-  },
-  {
-    id: '2',
-    email: 'cajero@vento.com',
-    password: 'cajero123',
-    name: 'Juan Pérez',
-    role: 'Cajero'
-  },
-  {
-    id: '3',
-    email: 'empleado@vento.com',
-    password: 'empleado123',
-    name: 'María García',
-    role: 'Empleado'
-  }
-]
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const router = useRouter()
-  const pathname = usePathname()
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [isInitialized, setIsInitialized] = useState(false)
 
-  // Verificar si hay una sesión guardada al cargar
+  // Verificar sesión automáticamente SOLO UNA VEZ al montar
   useEffect(() => {
-    const savedUser = localStorage.getItem('vento_user')
-    if (savedUser) {
-      setUser(JSON.parse(savedUser))
-    }
-    setIsLoading(false)
-  }, [])
+    let isMounted = true
 
-  // Redirigir a login si no está autenticado
-  useEffect(() => {
-    if (!isLoading && !user && pathname !== '/login') {
-      router.push('/login')
+    const initAuth = async () => {
+      try {
+        setIsLoading(true)
+        const result = await authService.getProfile()
+        
+        // Solo actualizar estado si el componente sigue montado
+        if (isMounted) {
+          if (result.success && result.user) {
+            setUser(result.user)
+          }
+        }
+      } catch (err) {
+        // Silently fail if no session
+      } finally {
+        if (isMounted) {
+          setIsLoading(false)
+          setIsInitialized(true)
+        }
+      }
     }
-  }, [user, isLoading, pathname, router])
+
+    initAuth()
+
+    // Cleanup function
+    return () => {
+      isMounted = false
+    }
+  }, []) // Array vacío - solo una vez
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    // Buscar usuario en la lista predefinida
-    const foundUser = COMPANY_USERS.find(
-      u => u.email === email && u.password === password
-    )
+    setError(null)
+    setIsLoading(true)
 
-    if (foundUser) {
-      const userData: User = {
-        id: foundUser.id,
-        email: foundUser.email,
-        name: foundUser.name,
-        role: foundUser.role
+    try {
+      const result = await authService.login({
+        correo: email,
+        contrasena: password
+      })
+
+      if (result.success && result.user) {
+        setUser(result.user)
+        return true
+      } else {
+        setError(result.error || 'Error al iniciar sesión')
+        return false
       }
-      
-      setUser(userData)
-      localStorage.setItem('vento_user', JSON.stringify(userData))
-      return true
+    } catch (err: any) {
+      setError(err.message || 'Error de conexión')
+      return false
+    } finally {
+      setIsLoading(false)
     }
-    
-    return false
   }
 
-  const logout = () => {
-    setUser(null)
-    localStorage.removeItem('vento_user')
-    router.push('/login')
+  const logout = async () => {
+    try {
+      await authService.logout()
+    } catch (err) {
+      console.error('Error en logout:', err)
+    } finally {
+      setUser(null)
+      setError(null)
+    }
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, login, logout, isLoading, error, isInitialized }}>
       {children}
     </AuthContext.Provider>
   )
