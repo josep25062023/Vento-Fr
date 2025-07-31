@@ -1,4 +1,4 @@
-// src/components/layout/Sidebar.tsx - CON LOGOUT FUNCIONAL
+// RUTA: src/components/layout/Sidebar.tsx
 'use client'
 
 import { useState } from 'react'
@@ -74,8 +74,9 @@ export default function Sidebar() {
   const router = useRouter()
 
   const handleLogout = async () => {
-    await logout()
-    router.push('/login')
+    // La función logout del contexto ya maneja la lógica interna
+    logout();
+    router.push('/login');
   }
 
   return (
@@ -145,7 +146,9 @@ export default function Sidebar() {
                 {user?.nombreCompleto || 'Usuario'}
               </p>
               <p className="text-xs text-gray-400">
-                {user?.correo || user?.email || 'usuario@vento.com'}
+                {/* --- CORRECCIÓN --- */}
+                {/* Se elimina la referencia a `user.email` que no existe */}
+                {user?.correo || 'usuario@vento.com'}
               </p>
             </div>
           )}
