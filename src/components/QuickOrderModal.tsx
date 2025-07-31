@@ -13,6 +13,12 @@ interface QuickOrderModalProps {
   onConfirm: (platilloId: string, cantidad: number, notas?: string) => Promise<void>
 }
 
+// Función utilitaria para validar números
+const safeNumber = (value: any): number => {
+  const num = Number(value)
+  return isNaN(num) ? 0 : num
+}
+
 export default function QuickOrderModal({ isOpen, platillo, onClose, onConfirm }: QuickOrderModalProps) {
   const [cantidad, setCantidad] = useState(1)
   const [notas, setNotas] = useState('')
@@ -47,7 +53,8 @@ export default function QuickOrderModal({ isOpen, platillo, onClose, onConfirm }
   const incrementCantidad = () => setCantidad(prev => prev + 1)
   const decrementCantidad = () => setCantidad(prev => Math.max(1, prev - 1))
 
-  const total = platillo.precio * cantidad
+  const precio = safeNumber(platillo.precio)
+  const total = precio * cantidad
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -79,7 +86,7 @@ export default function QuickOrderModal({ isOpen, platillo, onClose, onConfirm }
               <div className="flex-1">
                 <h3 className="font-semibold text-white">{platillo.nombre}</h3>
                 <p className="text-gray-400 text-sm mb-1">{platillo.categoria}</p>
-                <p className="text-orange-400 font-bold">${platillo.precio.toFixed(2)}</p>
+                <p className="text-orange-400 font-bold">${precio.toFixed(2)}</p>
               </div>
             </div>
             {platillo.descripcion && (
