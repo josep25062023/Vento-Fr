@@ -73,9 +73,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setError(result.error || 'Error al iniciar sesión')
         return false
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('❌ Login error:', err)
-      setError(err.message || 'Error de conexión')
+      setError(err instanceof Error ? err.message : 'Error de conexión')
       return false
     } finally {
       setIsLoading(false)

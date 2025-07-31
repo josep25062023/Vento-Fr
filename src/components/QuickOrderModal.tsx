@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import { Plus, Minus, Loader2 } from 'lucide-react'
 import { type Platillo } from '@/services/menuService'
+import Image from 'next/image'
 
 interface QuickOrderModalProps {
   isOpen: boolean
@@ -75,10 +76,12 @@ export default function QuickOrderModal({ isOpen, platillo, onClose, onConfirm }
           {/* Product Info */}
           <div className="mb-6">
             <div className="flex gap-4">
-              <img
+              <Image
                 src={platillo.imagenUrl}
                 alt={platillo.nombre}
-                className="w-20 h-20 object-cover rounded-lg"
+                width={80}
+                height={80}
+                className="object-cover rounded-lg"
                 onError={(e) => {
                   e.currentTarget.src = 'https://via.placeholder.com/80x80?text=Sin+Imagen'
                 }}

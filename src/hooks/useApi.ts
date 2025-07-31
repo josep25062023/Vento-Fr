@@ -1,12 +1,12 @@
 // src/hooks/useApi.ts
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 
 export function useApi<T>() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<T | null>(null);
 
-  const execute = async (apiCall: () => Promise<any>) => {
+  const execute = useCallback(async (apiCall: () => Promise<any>) => {
     setLoading(true);
     setError(null);
     
@@ -27,13 +27,13 @@ export function useApi<T>() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const reset = () => {
+  const reset = useCallback(() => {
     setLoading(false);
     setError(null);
     setData(null);
-  };
+  }, []);
 
   return {
     loading,

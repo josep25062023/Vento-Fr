@@ -1,7 +1,7 @@
-// src/app/pedidos/page.tsx - VERSIÓN ROBUSTA
+// src/app/pedidos/page.tsx - VERSIÓN OPTIMIZADA SIN ACTUALIZACIONES CONSTANTES
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { pedidosService } from '@/services/pedidosService'
 import { menuService, type Platillo } from '@/services/menuService'
 import { useApi } from '@/hooks/useApi'
@@ -42,11 +42,8 @@ export default function PedidosPage() {
 
   const { loading, error, execute } = useApi()
 
-  useEffect(() => {
-    loadData()
-  }, [])
-
-  const loadData = async () => {
+  // Función para cargar datos iniciales - solo se ejecuta una vez
+  const loadInitialData = useCallback(async () => {
     await execute(async () => {
       try {
         // Cargar pedidos y platillos en paralelo
@@ -77,7 +74,32 @@ export default function PedidosPage() {
         return { success: false, error: 'Error al cargar datos' }
       }
     })
-  }
+  }, [execute])
+
+  // Función separada para recargar solo pedidos (sin platillos)
+  const reloadPedidos = useCallback(async () => {
+    try {
+      const pedidosResult = await pedidosService.getMisPedidos()
+      
+      if (pedidosResult.success && pedidosResult.data) {
+        const cleanedPedidos = pedidosResult.data.map((pedido: any) => ({
+          ...pedido,
+          total: Number(pedido.total) || 0,
+          estado: pedido.estado || 'pendiente',
+          createdAt: pedido.createdAt || new Date().toISOString(),
+          detalles: Array.isArray(pedido.detalles) ? pedido.detalles : []
+        }))
+        setPedidos(cleanedPedidos)
+      }
+    } catch (err) {
+      console.error('Error reloading pedidos:', err)
+    }
+  }, [])
+
+  // Solo cargar datos iniciales una vez al montar el componente
+  useEffect(() => {
+    loadInitialData()
+  }, []) // Array vacío - solo una vez
 
   const filteredOrders = pedidos.filter(order => {
     const matchesSearch = searchTerm === '' || 
@@ -104,7 +126,8 @@ export default function PedidosPage() {
       const result = await pedidosService.updatePedido(orderId, { estado: newStatus })
       
       if (result.success) {
-        await loadData() // Recargar pedidos
+        // Solo recargar pedidos, no toda la página
+        await reloadPedidos()
         setIsDetailsModalOpen(false)
         setSelectedOrder(null)
         alert('Estado del pedido actualizado exitosamente!')
@@ -132,7 +155,8 @@ export default function PedidosPage() {
       })
 
       if (result.success) {
-        await loadData()
+        // Solo recargar pedidos, no toda la página
+        await reloadPedidos()
         setIsNewOrderModalOpen(false)
         alert('Pedido creado exitosamente!')
       } else {
@@ -230,31 +254,44 @@ export default function PedidosPage() {
             placeholder="Buscar pedidos por ID, número o cliente..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-gray-900 border border-gray-800 rounded-xl pl-10 pr-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-600 focus:border-transparent"
+            className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
           />
         </div>
       </div>
 
       {/* Tabs */}
       <div className="mb-6">
-        <div className="flex space-x-1 bg-gray-900 p-1 rounded-xl border border-gray-800">
-          {[
-            { key: 'todos', label: 'Todos' },
-            { key: 'pendientes', label: 'Activos' },
-            { key: 'completados', label: 'Completados' }
-          ].map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key as any)}
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
-                activeTab === tab.key
-                  ? 'bg-gray-200 text-black'
-                  : 'text-gray-400 hover:text-white'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+        <div className="flex space-x-1 bg-gray-800 rounded-lg p-1 w-fit">
+          <button
+            onClick={() => setActiveTab('todos')}
+            className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
+              activeTab === 'todos'
+                ? 'bg-orange-500 text-white'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            Todos ({pedidos.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('pendientes')}
+            className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
+              activeTab === 'pendientes'
+                ? 'bg-orange-500 text-white'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            Pendientes ({pedidos.filter(p => ['pendiente', 'confirmado', 'preparando'].includes(p.estado)).length})
+          </button>
+          <button
+            onClick={() => setActiveTab('completados')}
+            className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
+              activeTab === 'completados'
+                ? 'bg-orange-500 text-white'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            Completados ({pedidos.filter(p => ['listo', 'entregado'].includes(p.estado)).length})
+          </button>
         </div>
       </div>
 
@@ -264,7 +301,7 @@ export default function PedidosPage() {
           <AlertCircle className="w-5 h-5 text-red-400" />
           <p className="text-red-300">{error}</p>
           <button 
-            onClick={loadData}
+            onClick={loadInitialData}
             className="ml-auto bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
           >
             Reintentar

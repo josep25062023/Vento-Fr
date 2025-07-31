@@ -16,7 +16,7 @@ type ProductCardProps = {
 };
 
 export default function ProductCard({ 
-  id,
+  // Removido 'id' no usado
   title, 
   imageSrc, 
   price, 
@@ -39,9 +39,11 @@ export default function ProductCard({
       onClick={onClick}
     >
       <div className={`w-full h-48 bg-gradient-to-br ${gradientFrom} ${gradientTo} rounded-xl mb-4 flex items-center justify-center relative overflow-hidden shadow-lg`}>
-        <img 
+        <Image 
           src={imageSrc} 
           alt={title} 
+          width={300} // Ajusta según necesidades
+          height={200}
           className="w-full h-full object-cover rounded-xl"
           onError={(e) => {
             e.currentTarget.src = 'https://via.placeholder.com/300x200?text=Sin+Imagen';
@@ -76,3 +78,4 @@ export default function ProductCard({
     </div>
   );
 }
+import Image from 'next/image'

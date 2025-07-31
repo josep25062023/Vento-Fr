@@ -1,7 +1,7 @@
 // src/app/menu/page.tsx
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { menuService, type Platillo } from '@/services/menuService'
 import { useApi } from '@/hooks/useApi'
 import ProductCard from '@/components/ProductCard'
@@ -19,16 +19,16 @@ export default function MenuPage() {
   
   const { loading, error, execute } = useApi<Platillo[]>()
 
-  useEffect(() => {
-    loadPlatillos()
-  }, [])
-
-  const loadPlatillos = async () => {
+  const loadPlatillos = useCallback(async () => {
     const result = await execute(() => menuService.getMisPlatillos())
     if (result.success && result.data) {
       setPlatillos(result.data)
     }
-  }
+  }, [execute])
+
+  useEffect(() => {
+    loadPlatillos()
+  }, [loadPlatillos])
 
   const handleCreatePlatillo = async (data: Omit<Platillo, 'id'>) => {
     const result = await menuService.createPlatillo(data)

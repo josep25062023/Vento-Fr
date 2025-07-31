@@ -1,7 +1,7 @@
 // src/app/ventas/page.tsx - VERSIÓN ROBUSTA
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { pedidosService } from '@/services/pedidosService'
 import { useApi } from '@/hooks/useApi'
 import { 
@@ -63,11 +63,7 @@ export default function VentasPage() {
 
   const { loading, error, execute } = useApi()
 
-  useEffect(() => {
-    loadSalesData()
-  }, [])
-
-  const loadSalesData = async () => {
+  const loadSalesData = useCallback(async () => {
     await execute(async () => {
       try {
         const result = await pedidosService.getMisPedidos()
@@ -105,7 +101,11 @@ export default function VentasPage() {
         return { success: false, error: 'Error al cargar datos de ventas' }
       }
     })
-  }
+  }, [execute])
+
+  useEffect(() => {
+    loadSalesData()
+  }, [loadSalesData])
 
   const calculateSalesMetrics = (orders: any[]) => {
     try {
@@ -213,7 +213,7 @@ export default function VentasPage() {
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
-    } catch (err) {
+    } catch { // Removido 'err' no usado
       alert('Error al exportar datos')
     }
   }

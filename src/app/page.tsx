@@ -1,7 +1,7 @@
 // src/app/page.tsx - DASHBOARD REAL
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { menuService, type Platillo } from '@/services/menuService'
 import { pedidosService } from '@/services/pedidosService'
 import { useApi } from '@/hooks/useApi'
@@ -32,11 +32,7 @@ export default function Dashboard() {
   
   const { loading, execute } = useApi()
 
-  useEffect(() => {
-    loadDashboardData()
-  }, [])
-
-  const loadDashboardData = async () => {
+  const loadDashboardData = useCallback(async () => {
     await execute(async () => {
       // Cargar platillos
       const platillosResult = await menuService.getMisPlatillos()
@@ -73,7 +69,11 @@ export default function Dashboard() {
       
       return { success: true }
     })
-  }
+  }, [execute])
+
+  useEffect(() => {
+    loadDashboardData()
+  }, [loadDashboardData])
 
   const handleQuickOrder = (platillo: Platillo) => {
     setSelectedPlatillo(platillo)
@@ -268,7 +268,7 @@ export default function Dashboard() {
         {searchTerm && (
           <div>
             <h2 className="text-xl font-semibold text-white mb-6">
-              Resultados para "{searchTerm}"
+              Resultados para &quot;{searchTerm}&quot;
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {availablePlatillos.length > 0 ? (

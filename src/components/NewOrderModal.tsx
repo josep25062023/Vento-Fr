@@ -82,7 +82,7 @@ export default function NewOrderModal({ isOpen, onClose, products, onConfirm }: 
     }, 0)
   }
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => { // Tipo implícito, pero ajusta si es necesario
     if (!customerName.trim()) {
       alert('Por favor ingresa el nombre del cliente')
       return

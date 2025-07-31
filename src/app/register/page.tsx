@@ -45,17 +45,15 @@ export default function RegisterPage() {
 
     try {
       // Simulación de registro - aquí conectarías con tu API
-      // Por ahora simulo que el registro es exitoso
-      const newUser = {
-        id: Date.now().toString(),
-        email: formData.email,
-        name: formData.name,
-        role: formData.role
+      // Por ahora simulo que el registro es exitoso y luego hago login
+      const success = await login(formData.email, formData.password)
+      
+      if (success) {
+        router.push('/')
+      } else {
+        setError('Error al iniciar sesión después del registro')
       }
-
-      await login(newUser)
-      router.push('/')
-    } catch (err) {
+    } catch {
       setError('Error al crear la cuenta')
     } finally {
       setIsLoading(false)
