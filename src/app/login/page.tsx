@@ -1,4 +1,4 @@
-// src/app/login/page.tsx - CON NAVEGACIÓN MANUAL
+// src/app/login/page.tsx - VERSIÓN LIMPIA
 'use client'
 
 import { useState } from 'react'
@@ -18,21 +18,9 @@ export default function LoginPage() {
     
     const success = await login(email, password)
     if (success) {
-      // REDIRECCIÓN MANUAL solo después del login exitoso
       router.push('/')
     }
   }
-
-  const fillDemoCredentials = (email: string, password: string) => {
-    setEmail(email)
-    setPassword(password)
-  }
-
-  const demoUsers = [
-    { role: 'Demo 1', email: 'juan@ejemplo.com', pass: 'miPassword123' },
-    { role: 'Demo 2', email: 'maria@ejemplo.com', pass: 'miPassword123' },
-    { role: 'Demo 3', email: 'admin@ejemplo.com', pass: 'miPassword123' },
-  ]
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 flex">
@@ -145,34 +133,15 @@ export default function LoginPage() {
                 {isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
               </button>
 
-              {/* Separator */}
-              <div className="relative my-6">
-                <hr className="border-gray-300" />
-                <span className="absolute inset-x-0 top-1/2 transform -translate-y-1/2 bg-white px-2 text-xs uppercase text-gray-500 text-center">
-                  Usuarios de prueba
-                </span>
-              </div>
-
-              {/* Demo users */}
-              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 space-y-3">
-                <p className="text-xs text-gray-600 text-center mb-3">
-                  Haz clic en cualquier usuario para llenar el formulario automáticamente
-                </p>
-                {demoUsers.map(({ role, email, pass }) => (
-                  <button
-                    key={role}
-                    type="button"
-                    onClick={() => fillDemoCredentials(email, pass)}
-                    disabled={isLoading}
-                    className="w-full flex justify-between items-center p-2 rounded hover:bg-gray-100 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <div className="text-left">
-                      <p className="text-xs text-orange-600 font-medium">{role}:</p>
-                      <p className="text-xs text-gray-700">{email}</p>
-                    </div>
-                    <p className="text-xs text-gray-500">{pass}</p>
-                  </button>
-                ))}
+              {/* Forgot password link */}
+              <div className="text-center">
+                <button
+                  type="button"
+                  className="text-sm text-gray-600 hover:text-orange-500 transition-colors"
+                  onClick={() => alert('Funcionalidad de recuperación de contraseña próximamente')}
+                >
+                  ¿Olvidaste tu contraseña?
+                </button>
               </div>
             </form>
           </div>

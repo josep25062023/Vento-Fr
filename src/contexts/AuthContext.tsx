@@ -1,4 +1,4 @@
-// src/contexts/AuthContext.tsx - VERSIÓN FINAL SEGURA
+// src/contexts/AuthContext.tsx - CON LOCALSTORAGE, SIN BUCLES
 'use client'
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
@@ -24,40 +24,28 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isInitialized, setIsInitialized] = useState(false)
 
-  // Verificar sesión automáticamente SOLO UNA VEZ al montar
+  // Verificar localStorage SOLO una vez al montar - SIN llamadas a API
   useEffect(() => {
-    let isMounted = true
-
-    const initAuth = async () => {
-      try {
-        setIsLoading(true)
-        const result = await authService.getProfile()
-        
-        // Solo actualizar estado si el componente sigue montado
-        if (isMounted) {
-          if (result.success && result.user) {
-            setUser(result.user)
-          }
-        }
-      } catch (err) {
-        // Silently fail if no session
-      } finally {
-        if (isMounted) {
-          setIsLoading(false)
-          setIsInitialized(true)
-        }
+    try {
+      console.log('🔍 Checking localStorage for saved user...')
+      const savedUser = localStorage.getItem('vento_user')
+      
+      if (savedUser) {
+        const userData = JSON.parse(savedUser)
+        console.log('✅ Found saved user:', userData)
+        setUser(userData)
+      } else {
+        console.log('ℹ️ No saved user found')
       }
-    }
-
-    initAuth()
-
-    // Cleanup function
-    return () => {
-      isMounted = false
+    } catch (err) {
+      console.error('❌ Error reading localStorage:', err)
+    } finally {
+      setIsLoading(false)
+      setIsInitialized(true)
     }
   }, []) // Array vacío - solo una vez
 
@@ -66,19 +54,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true)
 
     try {
+      console.log('🚀 Attempting login...')
       const result = await authService.login({
         correo: email,
         contrasena: password
       })
 
       if (result.success && result.user) {
+        console.log('✅ Login successful:', result.user)
         setUser(result.user)
+        
+        // Guardar en localStorage para persistencia
+        localStorage.setItem('vento_user', JSON.stringify(result.user))
+        
         return true
       } else {
+        console.log('❌ Login failed:', result.error)
         setError(result.error || 'Error al iniciar sesión')
         return false
       }
     } catch (err: any) {
+      console.error('❌ Login error:', err)
       setError(err.message || 'Error de conexión')
       return false
     } finally {
@@ -86,15 +82,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const logout = async () => {
-    try {
-      await authService.logout()
-    } catch (err) {
-      console.error('Error en logout:', err)
-    } finally {
-      setUser(null)
-      setError(null)
-    }
+  const logout = () => {
+    console.log('🚪 Logging out...')
+    setUser(null)
+    setError(null)
+    
+    // Limpiar localStorage
+    localStorage.removeItem('vento_user')
   }
 
   return (
