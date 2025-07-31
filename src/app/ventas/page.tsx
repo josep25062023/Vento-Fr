@@ -1,11 +1,11 @@
-// src/app/ventas/page.tsx - VERSIÓN ROBUSTA
+// RUTA: src/app/ventas/page.tsx
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
 import { pedidosService } from '@/services/pedidosService'
 import { useApi } from '@/hooks/useApi'
 import { 
-  ChartBarIcon, 
+  // Se eliminó ChartBarIcon porque no se usaba
   ArrowTrendingUpIcon, 
   CurrencyDollarIcon, 
   ShoppingBagIcon, 
@@ -14,6 +14,17 @@ import {
   PrinterIcon
 } from '@heroicons/react/24/outline'
 import { Loader2, AlertCircle } from 'lucide-react'
+
+// --- INTERFACES PARA TIPADO ESTRICTO ---
+
+// Define la estructura de un pedido para eliminar el uso de `any`
+interface Pedido {
+  id: string;
+  total: number;
+  estado: 'pendiente' | 'confirmado' | 'preparando' | 'listo' | 'entregado' | 'cancelado';
+  createdAt: string; // Se asume que la fecha viene como string en formato ISO
+  // Agrega aquí otras propiedades que pueda tener un pedido
+}
 
 interface SalesData {
   totalRevenue: number
@@ -31,14 +42,19 @@ interface DailySales {
   orders: number
 }
 
-// Función utilitaria para validar y convertir a número
-const safeNumber = (value: any): number => {
+// --- FUNCIONES UTILITARIAS CON TIPADO SEGURO ---
+
+// Se reemplaza `any` por `unknown` para mayor seguridad
+const safeNumber = (value: unknown): number => {
   const num = Number(value)
   return isNaN(num) ? 0 : num
 }
 
-// Función utilitaria para validar fechas
-const safeDate = (dateString: any): Date => {
+const safeDate = (dateString: unknown): Date => {
+  // Se valida que el input sea un string antes de crear la fecha
+  if (typeof dateString !== 'string') {
+    return new Date();
+  }
   try {
     const date = new Date(dateString)
     return isNaN(date.getTime()) ? new Date() : date
@@ -59,19 +75,22 @@ export default function VentasPage() {
     monthRevenue: 0
   })
   const [dailySalesData, setDailySalesData] = useState<DailySales[]>([])
-  const [pedidos, setPedidos] = useState<any[]>([])
+  // El estado de `pedidos` ahora usa la interfaz `Pedido`
+  const [pedidos, setPedidos] = useState<Pedido[]>([])
 
-  const { loading, error, execute } = useApi()
+  // Se especifica el tipo de dato que manejará el hook
+  const { loading, error, execute } = useApi<Pedido[]>()
 
   const loadSalesData = useCallback(async () => {
+    // La función que se pasa a `execute` ahora tiene un tipado correcto
     await execute(async () => {
       try {
         const result = await pedidosService.getMisPedidos()
         
         if (result.success && result.data && Array.isArray(result.data)) {
-          // Limpiar y validar datos
-          const cleanedOrders = result.data.map((order: any) => ({
-            ...order,
+          // El `map` ahora infiere `order` como tipo `Pedido`
+          const cleanedOrders = result.data.map((order) => ({
+            id: order.id || `temp-id-${Math.random()}`, // Asegurar que siempre haya un ID
             total: safeNumber(order.total),
             estado: order.estado || 'pendiente',
             createdAt: order.createdAt || new Date().toISOString()
@@ -82,7 +101,6 @@ export default function VentasPage() {
           calculateDailySales(cleanedOrders)
         } else {
           setPedidos([])
-          // Establecer datos vacíos si no hay pedidos
           setSalesData({
             totalRevenue: 0,
             completedOrders: 0,
@@ -95,7 +113,8 @@ export default function VentasPage() {
           setDailySalesData([])
         }
         
-        return { success: true }
+        // Se devuelve un objeto compatible con ServiceResponse
+        return { success: true, data: result.data }
       } catch (err) {
         console.error('Error loading sales data:', err)
         return { success: false, error: 'Error al cargar datos de ventas' }
@@ -105,45 +124,32 @@ export default function VentasPage() {
 
   useEffect(() => {
     loadSalesData()
-  }, [loadSalesData])
+  }, [loadSalesData]) // La dependencia es correcta
 
-  const calculateSalesMetrics = (orders: any[]) => {
+  // La función ahora espera un array de `Pedido`
+  const calculateSalesMetrics = (orders: Pedido[]) => {
     try {
       const now = new Date()
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
       const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
       const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000)
 
-      // Filtrar pedidos completados
       const completedOrders = orders.filter(order => 
         ['listo', 'entregado'].includes(order.estado)
       )
 
-      // Calcular métricas con validación
-      const totalRevenue = completedOrders.reduce((sum, order) => sum + safeNumber(order.total), 0)
+      const totalRevenue = completedOrders.reduce((sum, order) => sum + order.total, 0)
       const completedOrdersCount = completedOrders.length
       const averageSpent = completedOrdersCount > 0 ? totalRevenue / completedOrdersCount : 0
       
-      // Ventas de hoy
-      const todayOrders = completedOrders.filter(order => {
-        const orderDate = safeDate(order.createdAt)
-        return orderDate >= today
-      })
-      const todayRevenue = todayOrders.reduce((sum, order) => sum + safeNumber(order.total), 0)
+      const todayOrders = completedOrders.filter(order => safeDate(order.createdAt) >= today)
+      const todayRevenue = todayOrders.reduce((sum, order) => sum + order.total, 0)
 
-      // Ventas de la semana
-      const weekOrders = completedOrders.filter(order => {
-        const orderDate = safeDate(order.createdAt)
-        return orderDate >= weekAgo
-      })
-      const weekRevenue = weekOrders.reduce((sum, order) => sum + safeNumber(order.total), 0)
+      const weekOrders = completedOrders.filter(order => safeDate(order.createdAt) >= weekAgo)
+      const weekRevenue = weekOrders.reduce((sum, order) => sum + order.total, 0)
 
-      // Ventas del mes
-      const monthOrders = completedOrders.filter(order => {
-        const orderDate = safeDate(order.createdAt)
-        return orderDate >= monthAgo
-      })
-      const monthRevenue = monthOrders.reduce((sum, order) => sum + safeNumber(order.total), 0)
+      const monthOrders = completedOrders.filter(order => safeDate(order.createdAt) >= monthAgo)
+      const monthRevenue = monthOrders.reduce((sum, order) => sum + order.total, 0)
 
       setSalesData({
         totalRevenue,
@@ -156,17 +162,16 @@ export default function VentasPage() {
       })
     } catch (err) {
       console.error('Error calculating sales metrics:', err)
-      // Mantener datos por defecto si hay error
     }
   }
 
-  const calculateDailySales = (orders: any[]) => {
+  // La función ahora espera un array de `Pedido`
+  const calculateDailySales = (orders: Pedido[]) => {
     try {
       const completedOrders = orders.filter(order => 
         ['listo', 'entregado'].includes(order.estado)
       )
 
-      // Últimos 7 días
       const salesByDay: { [key: string]: { sales: number, orders: number } } = {}
       const daysOfWeek = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 
@@ -177,12 +182,11 @@ export default function VentasPage() {
         const dateKey = date.toDateString()
 
         const dayOrders = completedOrders.filter(order => {
-          const orderDate = safeDate(order.createdAt)
-          return orderDate.toDateString() === dateKey
+          return safeDate(order.createdAt).toDateString() === dateKey
         })
 
         salesByDay[dayKey] = {
-          sales: dayOrders.reduce((sum, order) => sum + safeNumber(order.total), 0),
+          sales: dayOrders.reduce((sum, order) => sum + order.total, 0),
           orders: dayOrders.length
         }
       }
@@ -213,8 +217,9 @@ export default function VentasPage() {
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
-    } catch { // Removido 'err' no usado
-      alert('Error al exportar datos')
+    } catch {
+      // Se puede usar un modal o una notificación en lugar de alert
+      console.error('Error al exportar datos')
     }
   }
 
@@ -308,8 +313,8 @@ export default function VentasPage() {
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-gray-400 text-sm font-medium">
               {activeTab === 'daily' ? 'Ingresos Hoy' : 
-               activeTab === 'weekly' ? 'Ingresos Semana' : 
-               'Ingresos Mes'}
+                activeTab === 'weekly' ? 'Ingresos Semana' : 
+                'Ingresos Mes'}
             </h3>
             <CurrencyDollarIcon className="h-5 w-5 text-green-500" />
           </div>
@@ -415,7 +420,7 @@ export default function VentasPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-sm font-medium text-white">
-                        ${safeNumber(pedido.total).toFixed(2)}
+                        ${pedido.total.toFixed(2)}
                       </td>
                     </tr>
                   ))}

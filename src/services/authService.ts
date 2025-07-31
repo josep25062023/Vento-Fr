@@ -1,5 +1,10 @@
-// src/services/authService.ts
+// RUTA: src/services/authService.ts
 import api from '@/lib/axios';
+import axios, { AxiosError } from 'axios';
+// Importamos la interfaz de respuesta genérica que definimos antes
+import { ServiceResponse } from './pedidosService';
+
+// --- INTERFACES DE DATOS Y RESPUESTAS ---
 
 export interface LoginData {
   correo: string;
@@ -12,76 +17,114 @@ export interface RegisterData {
   contrasena: string;
 }
 
+// Interfaz para el objeto de usuario
 export interface User {
   id: string;
   nombreCompleto: string;
   correo: string;
-  // agregar otros campos según la respuesta de la API
+  // Agrega aquí otros campos que la API devuelva para un usuario
+}
+
+// Interfaz para la respuesta del endpoint de login/registro
+interface AuthResponse {
+  token: string;
+  user: User;
+}
+
+// Interfaz para los errores de la API (puede ser la misma que en otros servicios)
+interface ApiError {
+  message?: string;
+  error?: string;
 }
 
 export const authService = {
-  // Login
-  async login(data: LoginData) {
+  // --- LOGIN CORREGIDO ---
+  async login(data: LoginData): Promise<ServiceResponse<AuthResponse>> {
     try {
-      const response = await api.post('/auth/login', data);
+      const response = await api.post<AuthResponse>('/auth/login', data);
       return {
         success: true,
-        data: response.data,
-        user: response.data.user || response.data
+        data: response.data, // La respuesta completa (token y user)
       };
-    } catch (error: any) {
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const apiError = error.response?.data as ApiError;
+        return {
+          success: false,
+          error: apiError?.message || 'Error al iniciar sesión'
+        };
+      }
       return {
         success: false,
-        error: error.response?.data?.message || 'Error al iniciar sesión'
+        error: (error as Error).message || 'Error inesperado al iniciar sesión'
       };
     }
   },
 
-  // Registro
-  async register(data: RegisterData) {
+  // --- REGISTRO CORREGIDO ---
+  async register(data: RegisterData): Promise<ServiceResponse<AuthResponse>> {
     try {
-      const response = await api.post('/auth/register', data);
+      const response = await api.post<AuthResponse>('/auth/register', data);
       return {
         success: true,
         data: response.data,
-        user: response.data.user || response.data
       };
-    } catch (error: any) {
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const apiError = error.response?.data as ApiError;
+        return {
+          success: false,
+          error: apiError?.message || 'Error al registrar usuario'
+        };
+      }
       return {
         success: false,
-        error: error.response?.data?.message || 'Error al registrar usuario'
+        error: (error as Error).message || 'Error inesperado al registrar'
       };
     }
   },
 
-  // Logout
-  async logout() {
+  // --- LOGOUT CORREGIDO ---
+  // Devuelve `ServiceResponse<null>` porque no hay datos en caso de éxito
+  async logout(): Promise<ServiceResponse<null>> {
     try {
       await api.post('/auth/logout/secure');
       return { success: true };
-    } catch (error: any) {
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const apiError = error.response?.data as ApiError;
+        return {
+          success: false,
+          error: apiError?.message || 'Error al cerrar sesión'
+        };
+      }
       return {
         success: false,
-        error: error.response?.data?.message || 'Error al cerrar sesión'
+        error: (error as Error).message || 'Error inesperado al cerrar sesión'
       };
     }
   },
 
-  // Obtener perfil del usuario
-  async getProfile() {
+  // --- OBTENER PERFIL CORREGIDO ---
+  async getProfile(): Promise<ServiceResponse<User>> {
     try {
-      const response = await api.get('/auth/me');
+      const response = await api.get<User>('/auth/me');
       return {
         success: true,
-        user: response.data
+        data: response.data // Aquí la data es directamente el objeto User
       };
-    } catch (error: any) {
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const apiError = error.response?.data as ApiError;
+        return {
+          success: false,
+          error: apiError?.message || 'Error al obtener perfil'
+        };
+      }
       return {
         success: false,
-        error: error.response?.data?.message || 'Error al obtener perfil'
+        error: (error as Error).message || 'Error inesperado al obtener perfil'
       };
     }
   }
 };
-
-

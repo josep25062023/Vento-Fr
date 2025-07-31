@@ -1,15 +1,37 @@
-// src/services/pedidosService.ts
+// RUTA: src/services/pedidosService.ts
 import api from '@/lib/axios';
+import axios, { AxiosError } from 'axios';
 
-export interface DetallePedido {
+// --- INTERFACES EXPORTADAS Y CENTRALIZADAS ---
+
+// Interfaz para los detalles de un platillo dentro de un pedido
+export interface PedidoDetalle {
+  id: string;
   platilloId: string;
   cantidad: number;
+  precio: number;
   notasEspeciales?: string;
+}
+
+// La interfaz `Pedido` ahora es más completa
+export interface Pedido {
+  id: string;
+  numero?: string;
+  cliente?: string;
+  notas?: string;
+  estado: 'pendiente' | 'confirmado' | 'preparando' | 'listo' | 'entregado' | 'cancelado';
+  total: number;
+  createdAt: string;
+  detalles: PedidoDetalle[];
 }
 
 export interface PedidoData {
   notas?: string;
-  detalles: DetallePedido[];
+  detalles: Array<{
+    platilloId: string;
+    cantidad: number;
+    notasEspeciales?: string;
+  }>;
 }
 
 export interface PedidoUpdate {
@@ -17,103 +39,55 @@ export interface PedidoUpdate {
   estado?: 'pendiente' | 'confirmado' | 'preparando' | 'listo' | 'entregado' | 'cancelado';
 }
 
+export interface ServiceResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
+interface ApiError {
+  message?: string;
+  error?: string;
+}
+
 export const pedidosService = {
-  // Crear pedido
-  async createPedido(data: PedidoData) {
+  // Los métodos del servicio ahora usan la interfaz `Pedido` actualizada
+  async createPedido(data: PedidoData): Promise<ServiceResponse<Pedido>> {
     try {
-      console.log('🚀 Creating pedido:', data);
-      const response = await api.post('/pedidos', data);
-      console.log('✅ Pedido created:', response.data);
-      return {
-        success: true,
-        data: response.data
-      };
-    } catch (error: any) {
-      console.error('❌ Create pedido error:', error);
-      console.error('❌ Error response:', error.response?.data);
-      console.error('❌ Error status:', error.response?.status);
-      return {
-        success: false,
-        error: error.response?.data?.message || error.response?.data?.error || error.message || 'Error al crear pedido'
-      };
+      const response = await api.post<Pedido>('/pedidos', data);
+      return { success: true, data: response.data };
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const apiError = error.response?.data as ApiError;
+        return { success: false, error: apiError?.message || 'Error al crear pedido' };
+      }
+      return { success: false, error: (error as Error).message || 'Error inesperado' };
     }
   },
 
-  // Obtener mis pedidos
-  async getMisPedidos() {
+  async getMisPedidos(): Promise<ServiceResponse<Pedido[]>> {
     try {
-      const response = await api.get('/pedidos/mis-pedidos');
-      return {
-        success: true,
-        data: response.data
-      };
-    } catch (error: any) {
-      return {
-        success: false,
-        error: error.response?.data?.message || 'Error al obtener pedidos'
-      };
+      const response = await api.get<Pedido[]>('/pedidos/mis-pedidos');
+      return { success: true, data: response.data };
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const apiError = error.response?.data as ApiError;
+        return { success: false, error: apiError?.message || 'Error al obtener pedidos' };
+      }
+      return { success: false, error: (error as Error).message || 'Error inesperado' };
     }
   },
 
-  // Actualizar pedido
-  async updatePedido(id: string, data: PedidoUpdate) {
+  async updatePedido(id: string, data: PedidoUpdate): Promise<ServiceResponse<Pedido>> {
     try {
-      const response = await api.patch(`/pedidos/${id}`, data);
-      return {
-        success: true,
-        data: response.data
-      };
-    } catch (error: any) {
-      return {
-        success: false,
-        error: error.response?.data?.message || 'Error al actualizar pedido'
-      };
+      const response = await api.patch<Pedido>(`/pedidos/${id}`, data);
+      return { success: true, data: response.data };
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const apiError = error.response?.data as ApiError;
+        return { success: false, error: apiError?.message || 'Error al actualizar pedido' };
+      }
+      return { success: false, error: (error as Error).message || 'Error inesperado' };
     }
   }
 };
-
-// src/hooks/useApi.ts
-import { useState } from 'react';
-
-export function useApi<T>() {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [data, setData] = useState<T | null>(null);
-
-  const execute = async (apiCall: () => Promise<any>) => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const result = await apiCall();
-      
-      if (result.success) {
-        setData(result.data || result.user);
-        return result;
-      } else {
-        setError(result.error);
-        return result;
-      }
-    } catch (err: any) {
-      const errorMessage = err.message || 'Error inesperado';
-      setError(errorMessage);
-      return { success: false, error: errorMessage };
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const reset = () => {
-    setLoading(false);
-    setError(null);
-    setData(null);
-  };
-
-  return {
-    loading,
-    error,
-    data,
-    execute,
-    reset
-  };
-}

@@ -1,8 +1,14 @@
-// src/services/menuService.ts
+// RUTA: src/services/menuService.ts
 import api from '@/lib/axios';
+import axios, { AxiosError } from 'axios';
+// Importamos la interfaz de respuesta genérica
+import { ServiceResponse } from './pedidosService';
 
+// --- INTERFACES DE DATOS Y RESPUESTAS ---
+
+// La interfaz Platillo ya estaba bien definida y exportada.
 export interface Platillo {
-  id?: string;
+  id: string; // Se asume que la API siempre devuelve un ID
   nombre: string;
   descripcion: string;
   precio: number;
@@ -11,69 +17,101 @@ export interface Platillo {
   categoria: string;
 }
 
+// Interfaz para los errores de la API
+interface ApiError {
+  message?: string;
+  error?: string;
+}
+
 export const menuService = {
-  // Crear platillo
-  async createPlatillo(data: Omit<Platillo, 'id'>) {
+  // --- CREAR PLATILLO CORREGIDO ---
+  async createPlatillo(data: Omit<Platillo, 'id'>): Promise<ServiceResponse<Platillo>> {
     try {
       console.log('🚀 Creating platillo:', data);
-      const response = await api.post('/menu', data);
+      const response = await api.post<Platillo>('/menu', data);
       console.log('✅ Platillo created:', response.data);
       return {
         success: true,
         data: response.data
       };
-    } catch (error: any) {
+    } catch (error) {
       console.error('❌ Create platillo error:', error);
-      console.error('❌ Error response:', error.response?.data);
-      console.error('❌ Error status:', error.response?.status);
+      if (axios.isAxiosError(error)) {
+        const apiError = error.response?.data as ApiError;
+        return {
+          success: false,
+          error: apiError?.message || apiError?.error || 'Error al crear platillo'
+        };
+      }
       return {
         success: false,
-        error: error.response?.data?.message || error.response?.data?.error || error.message || 'Error al crear platillo'
+        error: (error as Error).message || 'Error inesperado al crear platillo'
       };
     }
   },
 
-  // Obtener mis platillos
-  async getMisPlatillos() {
+  // --- OBTENER MIS PLATILLOS CORREGIDO ---
+  async getMisPlatillos(): Promise<ServiceResponse<Platillo[]>> {
     try {
-      const response = await api.get('/menu/mis-platillos');
+      const response = await api.get<Platillo[]>('/menu/mis-platillos');
       return {
         success: true,
         data: response.data
       };
-    } catch (error: any) {
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const apiError = error.response?.data as ApiError;
+        return {
+          success: false,
+          error: apiError?.message || 'Error al obtener platillos'
+        };
+      }
       return {
         success: false,
-        error: error.response?.data?.message || 'Error al obtener platillos'
+        error: (error as Error).message || 'Error inesperado al obtener platillos'
       };
     }
   },
 
-  // Actualizar platillo
-  async updatePlatillo(id: string, data: Partial<Omit<Platillo, 'id'>>) {
+  // --- ACTUALIZAR PLATILLO CORREGIDO ---
+  async updatePlatillo(id: string, data: Partial<Omit<Platillo, 'id'>>): Promise<ServiceResponse<Platillo>> {
     try {
-      const response = await api.patch(`/menu/${id}`, data);
+      const response = await api.patch<Platillo>(`/menu/${id}`, data);
       return {
         success: true,
         data: response.data
       };
-    } catch (error: any) {
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const apiError = error.response?.data as ApiError;
+        return {
+          success: false,
+          error: apiError?.message || 'Error al actualizar platillo'
+        };
+      }
       return {
         success: false,
-        error: error.response?.data?.message || 'Error al actualizar platillo'
+        error: (error as Error).message || 'Error inesperado al actualizar platillo'
       };
     }
   },
 
-  // Eliminar platillo
-  async deletePlatillo(id: string) {
+  // --- ELIMINAR PLATILLO CORREGIDO ---
+  async deletePlatillo(id: string): Promise<ServiceResponse<null>> {
     try {
       await api.delete(`/menu/${id}`);
       return { success: true };
-    } catch (error: any) {
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const apiError = error.response?.data as ApiError;
+        return {
+          success: false,
+          error: apiError?.message || 'Error al eliminar platillo'
+        };
+      }
       return {
         success: false,
-        error: error.response?.data?.message || 'Error al eliminar platillo'
+        error: (error as Error).message || 'Error inesperado al eliminar platillo'
       };
     }
   }

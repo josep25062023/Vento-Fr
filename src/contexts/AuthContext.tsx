@@ -1,15 +1,12 @@
-// src/contexts/AuthContext.tsx - CON LOCALSTORAGE, SIN BUCLES
+// RUTA: src/contexts/AuthContext.tsx
 'use client'
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
-import { authService } from '@/services/authService'
+// --- ¡CAMBIO IMPORTANTE! ---
+// Importamos tanto el servicio como la interfaz `User` desde el mismo lugar.
+import { authService, User } from '@/services/authService'
 
-interface User {
-  id: string
-  email?: string
-  correo?: string
-  nombreCompleto: string
-}
+// La interfaz `User` local se ha ELIMINADO.
 
 interface AuthContextType {
   user: User | null
@@ -28,14 +25,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null)
   const [isInitialized, setIsInitialized] = useState(false)
 
-  // Verificar localStorage SOLO una vez al montar - SIN llamadas a API
+  // Verificar localStorage SOLO una vez al montar
   useEffect(() => {
     try {
       console.log('🔍 Checking localStorage for saved user...')
       const savedUser = localStorage.getItem('vento_user')
       
       if (savedUser) {
-        const userData = JSON.parse(savedUser)
+        const userData: User = JSON.parse(savedUser)
         console.log('✅ Found saved user:', userData)
         setUser(userData)
       } else {
@@ -47,7 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false)
       setIsInitialized(true)
     }
-  }, []) // Array vacío - solo una vez
+  }, [])
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setError(null)
@@ -60,12 +57,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         contrasena: password
       })
 
-      if (result.success && result.user) {
-        console.log('✅ Login successful:', result.user)
-        setUser(result.user)
+      // --- ¡CORRECCIÓN CLAVE! ---
+      // Accedemos al usuario a través de `result.data.user`
+      if (result.success && result.data?.user) {
+        const loggedInUser = result.data.user;
+        console.log('✅ Login successful:', loggedInUser)
+        setUser(loggedInUser)
         
         // Guardar en localStorage para persistencia
-        localStorage.setItem('vento_user', JSON.stringify(result.user))
+        localStorage.setItem('vento_user', JSON.stringify(loggedInUser))
         
         return true
       } else {

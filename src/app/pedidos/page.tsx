@@ -1,8 +1,10 @@
-// src/app/pedidos/page.tsx - VERSIÓN OPTIMIZADA SIN ACTUALIZACIONES CONSTANTES
+// RUTA: src/app/pedidos/page.tsx
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { pedidosService } from '@/services/pedidosService'
+// --- ¡CAMBIO IMPORTANTE! ---
+// Importamos los tipos `Pedido` y `Platillo` desde sus respectivos servicios
+import { pedidosService, type Pedido } from '@/services/pedidosService'
 import { menuService, type Platillo } from '@/services/menuService'
 import { useApi } from '@/hooks/useApi'
 import { MagnifyingGlassIcon, PlusIcon, EyeIcon, ClockIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline'
@@ -10,51 +12,42 @@ import NewOrderModal from '@/components/NewOrderModal'
 import OrderDetailsModal from '@/components/OrderDetailsModal'
 import { Loader2, AlertCircle } from 'lucide-react'
 
-interface OrderItem {
-  id: string
-  platilloId: string
-  platillo?: Platillo
-  cantidad: number
-  precio: number
-  notasEspeciales?: string
+// Las interfaces locales `OrderItem` y `Order` se han eliminado
+// para usar `Pedido` y `PedidoDetalle` del servicio.
+
+// Interfaz para los items en el modal de nuevo pedido
+interface NewOrderItem {
+  id: string;
+  quantity: number;
+  notes?: string;
 }
 
-interface Order {
-  id: string
-  numero?: string
-  cliente?: string
-  notas?: string
-  estado: 'pendiente' | 'confirmado' | 'preparando' | 'listo' | 'entregado' | 'cancelado'
-  total: number
-  createdAt: string
-  detalles: OrderItem[]
-}
-
+//hol
 export default function PedidosPage() {
-  const [pedidos, setPedidos] = useState<Order[]>([])
+  // El estado ahora usa el tipo `Pedido` importado
+  const [pedidos, setPedidos] = useState<Pedido[]>([])
   const [platillos, setPlatillos] = useState<Platillo[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [activeTab, setActiveTab] = useState<'todos' | 'pendientes' | 'completados'>('todos')
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
+  const [selectedOrder, setSelectedOrder] = useState<Pedido | null>(null)
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
   const [isNewOrderModalOpen, setIsNewOrderModalOpen] = useState(false)
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null)
 
-  const { loading, error, execute } = useApi()
+  // El hook ahora espera un array de `Pedido` o `Platillo`
+  const { loading, error, execute } = useApi<Array<Pedido | Platillo>>()
 
-  // Función para cargar datos iniciales - solo se ejecuta una vez
   const loadInitialData = useCallback(async () => {
     await execute(async () => {
       try {
-        // Cargar pedidos y platillos en paralelo
         const [pedidosResult, platillosResult] = await Promise.all([
           pedidosService.getMisPedidos(),
           menuService.getMisPlatillos()
         ])
 
         if (pedidosResult.success && pedidosResult.data) {
-          // Validar y limpiar datos de pedidos
-          const cleanedPedidos = pedidosResult.data.map((pedido: any) => ({
+          // El `.map` ahora es seguro, `pedido` es de tipo `Pedido`
+          const cleanedPedidos = pedidosResult.data.map((pedido) => ({
             ...pedido,
             total: Number(pedido.total) || 0,
             estado: pedido.estado || 'pendiente',
@@ -76,13 +69,13 @@ export default function PedidosPage() {
     })
   }, [execute])
 
-  // Función separada para recargar solo pedidos (sin platillos)
   const reloadPedidos = useCallback(async () => {
     try {
       const pedidosResult = await pedidosService.getMisPedidos()
       
       if (pedidosResult.success && pedidosResult.data) {
-        const cleanedPedidos = pedidosResult.data.map((pedido: any) => ({
+        // El `.map` ahora es seguro
+        const cleanedPedidos = pedidosResult.data.map((pedido) => ({
           ...pedido,
           total: Number(pedido.total) || 0,
           estado: pedido.estado || 'pendiente',
@@ -96,10 +89,9 @@ export default function PedidosPage() {
     }
   }, [])
 
-  // Solo cargar datos iniciales una vez al montar el componente
   useEffect(() => {
     loadInitialData()
-  }, []) // Array vacío - solo una vez
+  }, [loadInitialData]) // Se agrega la dependencia correcta
 
   const filteredOrders = pedidos.filter(order => {
     const matchesSearch = searchTerm === '' || 
@@ -114,34 +106,32 @@ export default function PedidosPage() {
     return matchesSearch && matchesTab
   })
 
-  const handleViewOrder = (order: Order) => {
+  const handleViewOrder = (order: Pedido) => {
     setSelectedOrder(order)
     setIsDetailsModalOpen(true)
   }
 
-  const handleStatusChange = async (orderId: string, newStatus: 'pendiente' | 'confirmado' | 'preparando' | 'listo' | 'entregado' | 'cancelado') => {
+  const handleStatusChange = async (orderId: string, newStatus: Pedido['estado']) => {
     setUpdatingOrderId(orderId)
-    
     try {
       const result = await pedidosService.updatePedido(orderId, { estado: newStatus })
-      
       if (result.success) {
-        // Solo recargar pedidos, no toda la página
         await reloadPedidos()
         setIsDetailsModalOpen(false)
         setSelectedOrder(null)
-        alert('Estado del pedido actualizado exitosamente!')
+        // NOTA: `alert` no es ideal. Considera usar una librería de notificaciones (toasts).
       } else {
-        alert('Error: ' + result.error)
+        console.error('Error updating status:', result.error)
       }
     } catch (err) {
-      alert('Error al actualizar pedido')
+      console.error('Failed to update order:', err)
     } finally {
       setUpdatingOrderId(null)
     }
   }
 
-  const handleNewOrder = async (customerName: string, items: any[]) => {
+  // Se añade un tipo para los items del nuevo pedido
+  const handleNewOrder = async (customerName: string, items: NewOrderItem[]) => {
     try {
       const detalles = items.map(item => ({
         platilloId: item.id,
@@ -155,19 +145,17 @@ export default function PedidosPage() {
       })
 
       if (result.success) {
-        // Solo recargar pedidos, no toda la página
         await reloadPedidos()
         setIsNewOrderModalOpen(false)
-        alert('Pedido creado exitosamente!')
       } else {
-        alert('Error: ' + result.error)
+        console.error('Error creating order:', result.error)
       }
     } catch (err) {
-      alert('Error al crear pedido')
+      console.error('Failed to create order:', err)
     }
   }
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: Pedido['estado']) => {
     switch (status) {
       case 'pendiente': return 'bg-yellow-100 text-yellow-800 border-yellow-300'
       case 'confirmado': return 'bg-blue-100 text-blue-800 border-blue-300'
@@ -179,19 +167,12 @@ export default function PedidosPage() {
     }
   }
 
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'pendiente': return 'Pendiente'
-      case 'confirmado': return 'Confirmado'
-      case 'preparando': return 'Preparando'
-      case 'listo': return 'Listo'
-      case 'entregado': return 'Entregado'
-      case 'cancelado': return 'Cancelado'
-      default: return status
-    }
+  const getStatusText = (status: Pedido['estado']) => {
+    // Capitaliza la primera letra
+    return status.charAt(0).toUpperCase() + status.slice(1);
   }
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status: Pedido['estado']) => {
     switch (status) {
       case 'pendiente': return <ClockIcon className="w-4 h-4" />
       case 'confirmado': return <CheckCircleIcon className="w-4 h-4" />
@@ -206,11 +187,8 @@ export default function PedidosPage() {
   const formatDate = (dateString: string) => {
     try {
       return new Date(dateString).toLocaleString('es-ES', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit'
       })
     } catch {
       return 'Fecha inválida'
@@ -230,7 +208,7 @@ export default function PedidosPage() {
 
   return (
     <div className="min-h-screen bg-black text-white p-6">
-      {/* Header */}
+      {/* Header (sin cambios) */}
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold">Pedidos</h1>
@@ -245,7 +223,7 @@ export default function PedidosPage() {
         </button>
       </div>
 
-      {/* Search Bar */}
+      {/* Search Bar (sin cambios) */}
       <div className="mb-6">
         <div className="relative">
           <MagnifyingGlassIcon className="h-5 w-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -259,15 +237,13 @@ export default function PedidosPage() {
         </div>
       </div>
 
-      {/* Tabs */}
+      {/* Tabs (sin cambios) */}
       <div className="mb-6">
         <div className="flex space-x-1 bg-gray-800 rounded-lg p-1 w-fit">
           <button
             onClick={() => setActiveTab('todos')}
             className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
-              activeTab === 'todos'
-                ? 'bg-orange-500 text-white'
-                : 'text-gray-400 hover:text-white'
+              activeTab === 'todos' ? 'bg-orange-500 text-white' : 'text-gray-400 hover:text-white'
             }`}
           >
             Todos ({pedidos.length})
@@ -275,9 +251,7 @@ export default function PedidosPage() {
           <button
             onClick={() => setActiveTab('pendientes')}
             className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
-              activeTab === 'pendientes'
-                ? 'bg-orange-500 text-white'
-                : 'text-gray-400 hover:text-white'
+              activeTab === 'pendientes' ? 'bg-orange-500 text-white' : 'text-gray-400 hover:text-white'
             }`}
           >
             Pendientes ({pedidos.filter(p => ['pendiente', 'confirmado', 'preparando'].includes(p.estado)).length})
@@ -285,9 +259,7 @@ export default function PedidosPage() {
           <button
             onClick={() => setActiveTab('completados')}
             className={`px-6 py-2 rounded-md text-sm font-medium transition-colors ${
-              activeTab === 'completados'
-                ? 'bg-orange-500 text-white'
-                : 'text-gray-400 hover:text-white'
+              activeTab === 'completados' ? 'bg-orange-500 text-white' : 'text-gray-400 hover:text-white'
             }`}
           >
             Completados ({pedidos.filter(p => ['listo', 'entregado'].includes(p.estado)).length})
@@ -295,7 +267,7 @@ export default function PedidosPage() {
         </div>
       </div>
 
-      {/* Error State */}
+      {/* Error State (sin cambios) */}
       {error && (
         <div className="mb-6 flex items-center gap-2 p-4 bg-red-900/50 border border-red-700 rounded-lg">
           <AlertCircle className="w-5 h-5 text-red-400" />
@@ -309,28 +281,18 @@ export default function PedidosPage() {
         </div>
       )}
 
-      {/* Orders Table */}
+      {/* Orders Table (sin cambios en JSX, pero ahora con tipos seguros) */}
       <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
         {filteredOrders.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-800">
                 <tr>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-300 uppercase tracking-wider">
-                    ID Pedido
-                  </th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-300 uppercase tracking-wider">
-                    Fecha y Hora
-                  </th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-300 uppercase tracking-wider">
-                    Estado
-                  </th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-300 uppercase tracking-wider">
-                    Total
-                  </th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-300 uppercase tracking-wider">
-                    Acciones
-                  </th>
+                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-300 uppercase tracking-wider">ID Pedido</th>
+                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-300 uppercase tracking-wider">Fecha y Hora</th>
+                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-300 uppercase tracking-wider">Estado</th>
+                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-300 uppercase tracking-wider">Total</th>
+                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-300 uppercase tracking-wider">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-800">
@@ -338,83 +300,36 @@ export default function PedidosPage() {
                   <tr key={order.id} className="hover:bg-gray-800 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div>
-                        <div className="text-sm font-medium text-white">
-                          {order.numero || `#${order.id.slice(0, 8)}`}
-                        </div>
-                        {order.notas && (
-                          <div className="text-xs text-gray-400 truncate max-w-32">
-                            {order.notas}
-                          </div>
-                        )}
+                        <div className="text-sm font-medium text-white">{order.numero || `#${order.id.slice(0, 8)}`}</div>
+                        {order.notas && (<div className="text-xs text-gray-400 truncate max-w-32">{order.notas}</div>)}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                      {formatDate(order.createdAt)}
-                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{formatDate(order.createdAt)}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full border ${
-                        getStatusColor(order.estado)
-                      }`}>
+                      <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full border ${getStatusColor(order.estado)}`}>
                         {getStatusIcon(order.estado)}
                         {getStatusText(order.estado)}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
-                      ${(order.total || 0).toFixed(2)}
-                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">${(order.total || 0).toFixed(2)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
                       <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleViewOrder(order)}
-                          className="text-blue-400 hover:text-blue-300 transition-colors"
-                          title="Ver detalles"
-                        >
+                        <button onClick={() => handleViewOrder(order)} className="text-blue-400 hover:text-blue-300 transition-colors" title="Ver detalles">
                           <EyeIcon className="h-5 w-5" />
                         </button>
-                        
-                        {/* Quick status change buttons */}
                         {order.estado === 'pendiente' && (
-                          <button
-                            onClick={() => handleStatusChange(order.id, 'confirmado')}
-                            disabled={updatingOrderId === order.id}
-                            className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white px-2 py-1 rounded text-xs flex items-center gap-1"
-                            title="Confirmar"
-                          >
-                            {updatingOrderId === order.id ? (
-                              <Loader2 className="w-3 h-3 animate-spin" />
-                            ) : (
-                              <CheckCircleIcon className="w-3 h-3" />
-                            )}
+                          <button onClick={() => handleStatusChange(order.id, 'confirmado')} disabled={updatingOrderId === order.id} className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white px-2 py-1 rounded text-xs flex items-center gap-1" title="Confirmar">
+                            {updatingOrderId === order.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircleIcon className="w-3 h-3" />}
                           </button>
                         )}
-                        
                         {order.estado === 'confirmado' && (
-                          <button
-                            onClick={() => handleStatusChange(order.id, 'listo')}
-                            disabled={updatingOrderId === order.id}
-                            className="bg-green-600 hover:bg-green-700 disabled:bg-green-800 text-white px-2 py-1 rounded text-xs flex items-center gap-1"
-                            title="Marcar como listo"
-                          >
-                            {updatingOrderId === order.id ? (
-                              <Loader2 className="w-3 h-3 animate-spin" />
-                            ) : (
-                              <CheckCircleIcon className="w-3 h-3" />
-                            )}
+                           <button onClick={() => handleStatusChange(order.id, 'listo')} disabled={updatingOrderId === order.id} className="bg-green-600 hover:bg-green-700 disabled:bg-green-800 text-white px-2 py-1 rounded text-xs flex items-center gap-1" title="Marcar como listo">
+                            {updatingOrderId === order.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircleIcon className="w-3 h-3" />}
                           </button>
                         )}
-                        
                         {order.estado === 'listo' && (
-                          <button
-                            onClick={() => handleStatusChange(order.id, 'entregado')}
-                            disabled={updatingOrderId === order.id}
-                            className="bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 text-white px-2 py-1 rounded text-xs flex items-center gap-1"
-                            title="Marcar como entregado"
-                          >
-                            {updatingOrderId === order.id ? (
-                              <Loader2 className="w-3 h-3 animate-spin" />
-                            ) : (
-                              <CheckCircleIcon className="w-3 h-3" />
-                            )}
+                           <button onClick={() => handleStatusChange(order.id, 'entregado')} disabled={updatingOrderId === order.id} className="bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 text-white px-2 py-1 rounded text-xs flex items-center gap-1" title="Marcar como entregado">
+                            {updatingOrderId === order.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircleIcon className="w-3 h-3" />}
                           </button>
                         )}
                       </div>
@@ -427,28 +342,14 @@ export default function PedidosPage() {
         ) : (
           <div className="text-center py-12">
             <div className="text-6xl mb-4 text-gray-500">📋</div>
-            <h3 className="text-xl font-semibold text-gray-400 mb-2">
-              {searchTerm ? 'No se encontraron pedidos' : 'No hay pedidos disponibles'}
-            </h3>
-            <p className="text-gray-500 mb-4">
-              {searchTerm 
-                ? `No hay pedidos que coincidan con "${searchTerm}"` 
-                : 'Crea tu primer pedido para comenzar'
-              }
-            </p>
-            {!searchTerm && (
-              <button 
-                onClick={() => setIsNewOrderModalOpen(true)}
-                className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg"
-              >
-                Crear Primer Pedido
-              </button>
-            )}
+            <h3 className="text-xl font-semibold text-gray-400 mb-2">{searchTerm ? 'No se encontraron pedidos' : 'No hay pedidos disponibles'}</h3>
+            <p className="text-gray-500 mb-4">{searchTerm ? `No hay pedidos que coincidan con "${searchTerm}"` : 'Crea tu primer pedido para comenzar'}</p>
+            {!searchTerm && (<button onClick={() => setIsNewOrderModalOpen(true)} className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg">Crear Primer Pedido</button>)}
           </div>
         )}
       </div>
 
-      {/* Loading overlay */}
+      {/* Loading overlay (sin cambios) */}
       {loading && pedidos.length > 0 && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-40">
           <div className="bg-gray-900 p-6 rounded-lg">
@@ -458,16 +359,11 @@ export default function PedidosPage() {
         </div>
       )}
 
-      {/* Modals */}
+      {/* Modals (ahora con tipos seguros) */}
       <NewOrderModal
         isOpen={isNewOrderModalOpen}
         onClose={() => setIsNewOrderModalOpen(false)}
-        products={platillos.map(p => ({
-          id: p.id!,
-          name: p.nombre,
-          price: p.precio,
-          category: p.categoria
-        }))}
+        products={platillos.map(p => ({ id: p.id, name: p.nombre, price: p.precio, category: p.categoria }))}
         onConfirm={handleNewOrder}
       />
 
@@ -476,22 +372,20 @@ export default function PedidosPage() {
         order={selectedOrder ? {
           id: selectedOrder.id,
           orderNumber: selectedOrder.numero || `#${selectedOrder.id.slice(0, 8)}`,
-          customer: selectedOrder.notas?.includes('Cliente:') 
-            ? selectedOrder.notas.replace('Cliente: ', '') 
-            : 'Cliente no especificado',
-          time: new Date(selectedOrder.createdAt).toLocaleTimeString('es-ES', { 
-            hour: '2-digit', 
-            minute: '2-digit' 
-          }),
-          status: selectedOrder.estado as any,
+          customer: selectedOrder.cliente || 'Cliente no especificado',
+          time: new Date(selectedOrder.createdAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+          status: selectedOrder.estado,
           total: selectedOrder.total || 0,
-          items: (selectedOrder.detalles || []).map(detalle => ({
-            id: detalle.id,
-            name: detalle.platillo?.nombre || `Platillo ${detalle.platilloId}`,
-            quantity: detalle.cantidad,
-            price: detalle.precio || 0,
-            notes: detalle.notasEspeciales
-          }))
+          items: (selectedOrder.detalles || []).map(detalle => {
+            const platillo = platillos.find(p => p.id === detalle.platilloId);
+            return {
+              id: detalle.id,
+              name: platillo?.nombre || `Platillo ${detalle.platilloId}`,
+              quantity: detalle.cantidad,
+              price: platillo?.precio || 0,
+              notes: detalle.notasEspeciales
+            }
+          })
         } : null}
         onClose={() => {
           setIsDetailsModalOpen(false)
