@@ -1,6 +1,6 @@
 // RUTA: src/services/pedidosService.ts
 import api from '@/lib/axios';
-import axios, { AxiosError } from 'axios';
+import axios from 'axios';
 
 // --- INTERFACES EXPORTADAS Y CENTRALIZADAS ---
 

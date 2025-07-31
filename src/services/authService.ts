@@ -1,6 +1,6 @@
 // RUTA: src/services/authService.ts
 import api from '@/lib/axios';
-import axios, { AxiosError } from 'axios';
+import axios from 'axios';
 // Importamos la interfaz de respuesta genérica que definimos antes
 import { ServiceResponse } from './pedidosService';
 

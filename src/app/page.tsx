@@ -1,9 +1,11 @@
-// src/app/page.tsx - DASHBOARD REAL
+// RUTA: src/app/page.tsx
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
 import { menuService, type Platillo } from '@/services/menuService'
-import { pedidosService } from '@/services/pedidosService'
+// --- ¡CAMBIO IMPORTANTE! ---
+// Importamos el servicio y el tipo `Pedido`
+import { pedidosService, type Pedido } from '@/services/pedidosService'
 import { useApi } from '@/hooks/useApi'
 import { useAuth } from '@/contexts/AuthContext'
 import ProductCard from '@/components/ProductCard'
@@ -30,7 +32,8 @@ export default function Dashboard() {
   const [selectedPlatillo, setSelectedPlatillo] = useState<Platillo | null>(null)
   const [isQuickOrderOpen, setIsQuickOrderOpen] = useState(false)
   
-  const { loading, execute } = useApi()
+  // Se especifica el tipo de dato que puede manejar el hook en esta página
+  const { loading, execute } = useApi<Array<Platillo | Pedido>>()
 
   const loadDashboardData = useCallback(async () => {
     await execute(async () => {
@@ -50,13 +53,17 @@ export default function Dashboard() {
         
         if (pedidosResult.success && pedidosResult.data) {
           const today = new Date().toDateString()
-          const pedidosDeHoy = pedidosResult.data.filter((pedido: any) => {
-            const pedidoDate = new Date(pedido.createdAt || pedido.fecha).toDateString()
+          // --- CORRECCIÓN ---
+          // Se usa el tipo `Pedido` en lugar de `any`
+          const pedidosDeHoy = pedidosResult.data.filter((pedido: Pedido) => {
+            const pedidoDate = new Date(pedido.createdAt).toDateString()
             return pedidoDate === today
           })
           
           pedidosHoy = pedidosDeHoy.length
-          ventasHoy = pedidosDeHoy.reduce((total: number, pedido: any) => total + (pedido.total || 0), 0)
+          // --- CORRECCIÓN ---
+          // Se usa el tipo `Pedido` en lugar de `any`
+          ventasHoy = pedidosDeHoy.reduce((total: number, pedido: Pedido) => total + (pedido.total || 0), 0)
         }
         
         setStats({
@@ -83,20 +90,20 @@ export default function Dashboard() {
   const handleCreateQuickOrder = async (platilloId: string, cantidad: number, notas?: string) => {
     const result = await pedidosService.createPedido({
       notas,
-      detalles: [{ platilloId, cantidad }]
+      detalles: [{ platilloId, cantidad, notasEspeciales: notas }]
     })
     
     if (result.success) {
       setIsQuickOrderOpen(false)
       setSelectedPlatillo(null)
-      alert('Pedido creado exitosamente!')
+      // alert('Pedido creado exitosamente!') // Es mejor usar notificaciones
       loadDashboardData() // Recargar stats
     } else {
-      alert('Error: ' + result.error)
+      // alert('Error: ' + result.error)
+      console.error("Error creating quick order:", result.error);
     }
   }
 
-  // Filtrar platillos para mostrar favoritos/destacados
   const featuredPlatillos = platillos.filter((p: Platillo) => p.disponible).slice(0, 6)
   const availablePlatillos = platillos.filter((p: Platillo) => 
     p.disponible && 
@@ -116,7 +123,7 @@ export default function Dashboard() {
 
   return (
     <div className="p-6 bg-black min-h-screen text-white">
-      {/* Header */}
+      {/* Header (sin cambios) */}
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div>
@@ -128,7 +135,6 @@ export default function Dashboard() {
             </p>
           </div>
           <div className="flex items-center space-x-4">
-            {/* Search Bar */}
             <div className="relative">
               <input
                 type="text"
@@ -160,7 +166,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards (sin cambios) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
           <div className="flex items-center justify-between">
@@ -173,7 +179,6 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-
         <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
           <div className="flex items-center justify-between">
             <div>
@@ -185,7 +190,6 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-
         <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
           <div className="flex items-center justify-between">
             <div>
@@ -197,7 +201,6 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-
         <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
           <div className="flex items-center justify-between">
             <div>
@@ -213,9 +216,8 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Dashboard Sections */}
+      {/* Dashboard Sections (sin cambios) */}
       <div className="space-y-8">
-        {/* Platillos Destacados */}
         <div>
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-white">Platillos Destacados</h2>
@@ -263,8 +265,6 @@ export default function Dashboard() {
             )}
           </div>
         </div>
-
-        {/* Búsqueda de Platillos */}
         {searchTerm && (
           <div>
             <h2 className="text-xl font-semibold text-white mb-6">
@@ -300,8 +300,6 @@ export default function Dashboard() {
             </div>
           </div>
         )}
-
-        {/* Acciones Rápidas */}
         <div>
           <h2 className="text-xl font-semibold text-white mb-6">Acciones Rápidas</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -315,7 +313,6 @@ export default function Dashboard() {
               </div>
               <p className="text-blue-100 text-sm">Ver y administrar pedidos activos</p>
             </button>
-
             <button 
               onClick={() => window.location.href = '/menu'}
               className="bg-green-600 hover:bg-green-700 text-white p-6 rounded-xl transition-colors text-left"
@@ -326,7 +323,6 @@ export default function Dashboard() {
               </div>
               <p className="text-green-100 text-sm">Añade nuevos platillos al menú</p>
             </button>
-
             <button 
               onClick={() => window.location.href = '/ventas'}
               className="bg-purple-600 hover:bg-purple-700 text-white p-6 rounded-xl transition-colors text-left"

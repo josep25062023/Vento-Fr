@@ -1,6 +1,6 @@
 // RUTA: src/services/menuService.ts
 import api from '@/lib/axios';
-import axios, { AxiosError } from 'axios';
+import axios from 'axios';
 // Importamos la interfaz de respuesta genérica
 import { ServiceResponse } from './pedidosService';
 
