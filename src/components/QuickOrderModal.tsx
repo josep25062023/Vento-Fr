@@ -1,7 +1,7 @@
-// src/components/QuickOrderModal.tsx
+// RUTA: src/components/QuickOrderModal.tsx
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import { Plus, Minus, Loader2 } from 'lucide-react'
 import { type Platillo } from '@/services/menuService'
@@ -14,8 +14,9 @@ interface QuickOrderModalProps {
   onConfirm: (platilloId: string, cantidad: number, notas?: string) => Promise<void>
 }
 
-// Función utilitaria para validar números
-const safeNumber = (value: any): number => {
+// --- CORRECCIÓN ---
+// Se cambia `any` por `unknown` para mayor seguridad de tipos.
+const safeNumber = (value: unknown): number => {
   const num = Number(value)
   return isNaN(num) ? 0 : num
 }
@@ -25,6 +26,16 @@ export default function QuickOrderModal({ isOpen, platillo, onClose, onConfirm }
   const [notas, setNotas] = useState('')
   const [loading, setLoading] = useState(false)
 
+  // Reset state when the modal opens with a new platillo
+  useEffect(() => {
+    if (isOpen) {
+      setCantidad(1);
+      setNotas('');
+      setLoading(false);
+    }
+  }, [isOpen, platillo]);
+
+
   if (!isOpen || !platillo) return null
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -32,10 +43,8 @@ export default function QuickOrderModal({ isOpen, platillo, onClose, onConfirm }
     setLoading(true)
     
     try {
-      await onConfirm(platillo.id!, cantidad, notas || undefined)
-      // Reset form
-      setCantidad(1)
-      setNotas('')
+      await onConfirm(platillo.id, cantidad, notas || undefined)
+      // The parent component will close the modal on success
     } catch (error) {
       console.error('Error creating quick order:', error)
     } finally {
@@ -45,8 +54,6 @@ export default function QuickOrderModal({ isOpen, platillo, onClose, onConfirm }
 
   const handleClose = () => {
     if (!loading) {
-      setCantidad(1)
-      setNotas('')
       onClose()
     }
   }

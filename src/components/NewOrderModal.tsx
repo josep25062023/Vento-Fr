@@ -1,4 +1,4 @@
-// src/components/NewOrderModal.tsx - VERSIÓN ROBUSTA
+// RUTA: src/components/NewOrderModal.tsx
 'use client'
 
 import { useState } from 'react'
@@ -26,8 +26,9 @@ interface NewOrderModalProps {
   onConfirm: (customerName: string, items: OrderItem[]) => void
 }
 
-// Función utilitaria para validar números
-const safeNumber = (value: any): number => {
+// --- CORRECCIÓN ---
+// Se cambia `any` por `unknown` para mayor seguridad de tipos.
+const safeNumber = (value: unknown): number => {
   const num = Number(value)
   return isNaN(num) ? 0 : num
 }
@@ -40,7 +41,6 @@ export default function NewOrderModal({ isOpen, onClose, products, onConfirm }: 
 
   if (!isOpen) return null
 
-  // Validar que products sea un array y limpiar datos
   const validProducts = Array.isArray(products) ? products.map(p => ({
     ...p,
     price: safeNumber(p.price),
@@ -67,7 +67,9 @@ export default function NewOrderModal({ isOpen, onClose, products, onConfirm }: 
     setSelectedProducts(prev => {
       const newQuantity = (prev[productId] || 0) - 1
       if (newQuantity <= 0) {
-        const { [productId]: removed, ...rest } = prev
+        // --- CORRECCIÓN ---
+        // Se añade un guion bajo para indicar a ESLint que la variable no se usará.
+        const { [productId]: _removed, ...rest } = prev
         return rest
       }
       return { ...prev, [productId]: newQuantity }
@@ -82,14 +84,16 @@ export default function NewOrderModal({ isOpen, onClose, products, onConfirm }: 
     }, 0)
   }
 
-  const handleConfirm = async () => { // Tipo implícito, pero ajusta si es necesario
+  const handleConfirm = async () => {
     if (!customerName.trim()) {
-      alert('Por favor ingresa el nombre del cliente')
+      // alert('Por favor ingresa el nombre del cliente')
+      console.error("Customer name is required");
       return
     }
 
     if (Object.keys(selectedProducts).length === 0) {
-      alert('Por favor selecciona al menos un producto')
+      // alert('Por favor selecciona al menos un producto')
+      console.error("At least one product must be selected");
       return
     }
 
